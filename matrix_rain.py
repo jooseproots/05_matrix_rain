@@ -61,7 +61,6 @@ class Matrix(list):
 
     @staticmethod
     def get_random_char():
-        '''generates a random character to be used in the matrix.'''
         return chr(random.choice([random.randint(32, 126), 9906, 985, 1993, 11439, 9880, 11801, 10047, 10048, 9753, 10086, 10087, 1126]))
 
     def update_cell(
@@ -99,6 +98,27 @@ class Matrix(list):
             r = random.randint(0, self.rows - 1)
 
             self.update_cell(r, c, char=self.get_random_char())
+
+    def message_glitch(self, seed: int):
+        '''creates a vertical message in a random spot on the terminal by updating cells.
+        Also returns the starting position (row and column) and the length of the message'''
+        random.seed(seed)
+        message = "Hello World"
+        c = random.randint(0, self.cols - 1)
+        r = random.randint(MAX_LEN, self.rows - len(message) - 1)
+        for i in range(len(message)+1):
+            if i == len(message):
+                self.update_cell(r+i, c, state=0)
+            else:
+                self.update_cell(r+i, c, char=message[i], state=1)
+
+        return r, c, len(message)        
+
+    def delete_message(self, r, c, message_length):
+        '''deletes a message in the terminal by setting the specified matrix cells 
+        to a blank state and giving them random characters'''
+        for i in range(message_length + 1):
+            self.update_cell(r+i, c, char=self.get_random_char(), state=0)
 
     def drop_col(self, col: int):
         '''drops a single column in the matrix by moving the characters down by one row, starting from the bottom-most row and working its way up.
@@ -152,16 +172,29 @@ class Matrix(list):
 
     def start(self):
         '''starts the animation loop, continuously updating and rendering the matrix.'''
+        iterations = 0
+        seed = None
+        message_time = 20
+
         while True:
             print(CLEAR_CHAR, end="")
             print(self, end="", flush=True)
 
             self.screen_check()
-
-            self.apply_glitch()
+            
             self.update()
 
-            time.sleep(self.wait) # time until new iteration
+            if iterations == 0: 
+                seed = random.randint(0, 1000)  # Generates a new random seed
+
+            if iterations <= message_time - 1: # Displays a message in the terminal for 'message_time' number of iterations
+                r, c, message_length = self.message_glitch(seed=seed) 
+            else:
+                self.delete_message(r, c, message_length)
+
+            time.sleep(self.wait) # Time until new iteration
+            iterations += 1
+            iterations %= message_time + 1 # Resets iterations counter after specified number
 
 
 @app.command() # makes start() a callable command for the Typer CLI application.
@@ -183,7 +216,7 @@ def start(
         if not 0 <= arg <= 1000:
             raise typer.BadParameter("must be between 1 and 1000")
 
-    matrix = Matrix(speed, glitches, frequency)
+    matrix = Matrix(speed, glitches, frequency-50)
     matrix.start()
 
 
