@@ -15,6 +15,7 @@ CLEAR_CHAR = "\x1b[H"
 STATE_NONE = 0
 STATE_FRONT = 1
 STATE_TAIL = 2
+STATE_MESSAGE = 3
 
 # Drop lengths
 MIN_LEN = 5
@@ -31,13 +32,15 @@ FRONT_CLR = "\x1b[38;5;231m"
 TOTAL_CLRS = len(BODY_CLRS)
 
 class Matrix(list):
-    def __init__(self, wait: int, glitch_freq: int, drop_freq: int):
+    def __init__(self, wait: int, glitch_freq: int, drop_freq: int, message_timer: int, messages: list[str]):
         self.rows = 0
         self.cols = 0
 
         self.wait = 0.06 / (wait / 100)
         self.glitch_freq = 0.01 / (glitch_freq / 100)
         self.drop_freq = 0.1 * (drop_freq / 100)
+        self.message_timer = message_timer
+        self.messages = messages
 
     def __str__(self):
         '''returns a string representation of the matrix, which is then printed to the terminal.'''
@@ -48,8 +51,10 @@ class Matrix(list):
                 text += BLANK_CHAR
             elif s == STATE_FRONT:
                 text += f"{FRONT_CLR}{c}"
-            else:
+            elif s == STATE_TAIL:
                 text += f"{BODY_CLRS[l]}{c}"
+            else:
+                text += f"{BODY_CLRS[1]}{c}"
 
         return text
 
@@ -103,14 +108,14 @@ class Matrix(list):
         '''creates a vertical message in a random spot on the terminal by updating cells.
         Also returns the starting position (row and column) and the length of the message'''
         random.seed(seed)
-        message = "Hello World"
+        message = random.choice(self.messages)
         c = random.randint(0, self.cols - 1)
         r = random.randint(MAX_LEN, self.rows - len(message) - 1)
         for i in range(len(message)+1):
             if i == len(message):
-                self.update_cell(r+i, c, state=0)
+                self.update_cell(r+i, c, state=STATE_NONE)
             else:
-                self.update_cell(r+i, c, char=message[i], state=1)
+                self.update_cell(r+i, c, char=message[i], state=STATE_MESSAGE)
 
         return r, c, len(message)        
 
@@ -118,7 +123,7 @@ class Matrix(list):
         '''deletes a message in the terminal by setting the specified matrix cells 
         to a blank state and giving them random characters'''
         for i in range(message_length + 1):
-            self.update_cell(r+i, c, char=self.get_random_char(), state=0)
+            self.update_cell(r+i, c, char=self.get_random_char(), state=STATE_NONE, length=0)
 
     def drop_col(self, col: int):
         '''drops a single column in the matrix by moving the characters down by one row, starting from the bottom-most row and working its way up.
@@ -174,7 +179,6 @@ class Matrix(list):
         '''starts the animation loop, continuously updating and rendering the matrix.'''
         iterations = 0
         seed = None
-        message_time = 20
 
         while True:
             print(CLEAR_CHAR, end="")
@@ -187,14 +191,16 @@ class Matrix(list):
             if iterations == 0: 
                 seed = random.randint(0, 1000)  # Generates a new random seed
 
-            if iterations <= message_time - 1: # Displays a message in the terminal for 'message_time' number of iterations
+            if iterations <= self.message_timer - 1: # Displays a message in the terminal for 'message_time' number of iterations
                 r, c, message_length = self.message_glitch(seed=seed) 
             else:
                 self.delete_message(r, c, message_length)
 
+            self.apply_glitch()
+
             time.sleep(self.wait) # Time until new iteration
             iterations += 1
-            iterations %= message_time + 1 # Resets iterations counter after specified number
+            iterations %= self.message_timer + 1 # Resets iterations counter after specified number
 
 
 @app.command() # makes start() a callable command for the Typer CLI application.
@@ -208,15 +214,31 @@ def start(
     frequency: int = typer.Option(
         100, "--frequency", "-f", help="Percentage of normal drop frequency"
     ),
+    message_timer: int = typer.Option(
+        20, "--message_timer", "-t", help="Number of iterations when static message is displayed in the animation"
+    ),
+    messages: list[str] = typer.Option(
+        ["EmBRacE the coDe, FEAr the an0m@ly.",
+        "REality is a lie, W@k3 up.",
+        "ThE syStEm is w@tchinG, alwaYs.", 
+        "SurReND3R to thE b1n@ry abYss.", 
+        "Unr@v3l the illUsion, find th3 truTH."],
+        "--messages", "-m", help="List of subliminal messages to be displayed in the animation"
+    )
 ):
     """Start the matrix rain"""
 
     # Argument validation
-    for arg in (speed, glitches, frequency):
+    for arg in (speed, glitches, frequency, message_timer):
         if not 0 <= arg <= 1000:
             raise typer.BadParameter("must be between 1 and 1000")
+        
+    # Messages validation
+    for message in messages:
+        if not 0 <= len(message) <= 40:
+            raise typer.BadParameter("message too long to display")
 
-    matrix = Matrix(speed, glitches, frequency-50)
+    matrix = Matrix(speed, glitches, frequency, message_timer, messages)
     matrix.start()
 
 
