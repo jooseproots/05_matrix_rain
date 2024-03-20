@@ -32,18 +32,47 @@ front_color = "\x1b[38;5;231m"
 total_colors = len(body_colors)
 
 class Matrix(list):
+    """
+    Initialize a new Matrix object.
+
+    Args:
+        wait (int): The wait time between frames as percentage of normal rain speed
+        glitch_freq (int): The glitch frequency as percentage of normal frequency.
+        drop_freq (int): The drop frequency as a percentage of normal frequency.
+        message_timer (int): The number of frames a message is displayed on the screen
+        messages (List[str]): A list of message strings to be displayed.
+
+    Attributes:
+        n_rows (int): The number of rows in the matrix.
+        n_cols (int): The number of columns in the matrix.
+        wait (float): The wait time between frames, based on input.
+        glitch_freq (float): The glitch frequency, based on input.
+        drop_freq (float): The drop frequency, based on input.
+        message_timer (int): The number of frames a message is displayed on the screen
+        messages (List[str]): A list of message strings to be displayed.
+    """
     def __init__(self, wait: int, glitch_freq: int, drop_freq: int, message_timer: int, messages: list[str]):
         self.n_rows = 0
         self.n_cols = 0
 
         self.wait = 0.06 / (wait / 100)
-        self.glitch_freq = 0.01 / (glitch_freq / 100)
+        self.glitch_freq = 0.01 * (glitch_freq / 100)
         self.drop_freq = 0.1 * (drop_freq / 100)
         self.message_timer = message_timer
         self.messages = messages
 
     def __str__(self):
-        '''returns a string representation of the matrix, which is then printed to the terminal.'''
+        """
+        Generate a string representation of the Matrix object.
+
+        Returns:
+            str: A string representation of the Matrix object, suitable for printing to the terminal.
+
+        This method generates a string representation of the Matrix object by iterating over all cells in the matrix,
+        and concatenating the appropriate character and color code based on the state of each cell.
+
+        The resulting string is then returned and can be printed to the terminal.
+        """
         text = ""
 
         for (char, state, length) in sum(self[max_drop_length:], []): # iterates over all cells
@@ -59,13 +88,39 @@ class Matrix(list):
         return text
 
     def get_prompt_size(self):
-        '''returns the size of the terminal prompt, which is used to adjust the matrix size if necessary.'''
+        """
+        Return the size of the terminal prompt to be used when creating the animation.
+
+        Returns:
+            tuple: A tuple of integers representing the height and width of the terminal prompt, in that order.
+
+        This method returns the size of the terminal prompt by calling the `os.get_terminal_size()` function.
+
+        The returned tuple contains the height and width of the terminal prompt, in that order. The height value is
+        incremented by `max_drop_length` to account for the "dropped" portion of the Matrix.
+
+        This method can be used to adjust the size of the Matrix object to fit the size of the terminal prompt.
+        """
         size = os.get_terminal_size()
 
         return size.lines + max_drop_length, size.columns
 
     @staticmethod
     def get_random_char():
+        """
+        Return a random printable character.
+
+        Returns:
+            str: A string containing a random printable character.
+
+        This method returns a random printable character by randomly selecting a codepoint from the range of ASCII
+        printable characters (32 to 126) and the `special_characters` list.
+
+        The method uses the `random.choice()` function to randomly select a codepoint from the list, and then converts
+        the codepoint to a character using the `chr()` function.
+
+        This method can be used to generate random characters for use in the Matrix object.
+        """
         special_characters = [9906, 985, 1993, 11439, 9880, 11801, 10047, 10048, 9753, 10086, 10087, 1126]
         return chr(random.choice([random.randint(32, 126)] + special_characters))
 
@@ -78,7 +133,24 @@ class Matrix(list):
         state: int = None,
         length: int = None,
     ):
-        '''updates the character, state, and length of a specific cell in the matrix.'''
+        """
+        Update the character, state, and length of a specific cell in the Matrix object.
+
+        Args:
+            i_row (int): The row index of the cell to update.
+            i_col (int): The column index of the cell to update.
+            char (str, optional): The new character for the cell. Defaults to None.
+            state (int, optional): The new state for the cell. Defaults to None.
+            length (int, optional): The new length for the cell. Defaults to None.
+
+        This method updates the character, state, and length of a specific cell in the Matrix object.
+
+        If a new character is provided, it will be set as the first element of the cell tuple.
+        If a new state is provided, it will be set as the second element of the cell tuple.
+        If a new length is provided, it will be set as the third element of the cell tuple.
+
+        If any of the optional arguments are not provided, the corresponding value of the cell will not be changed.
+        """
         if char is not None:
             self[i_row][i_col][0] = char
 
@@ -89,14 +161,28 @@ class Matrix(list):
             self[i_row][i_col][2] = length
 
     def fill(self):
-        '''fills the matrix with random characters.'''
+        """
+        Fill the Matrix object with random characters.
+
+        The characters are randomly selected from the printable ASCII range and the `special_characters` list.
+        The state of every cell is set to `state_none`, and the length is set to 0.
+        """
         self[:] = [
             [[self.get_random_char(), state_none, 0] for _ in range(self.n_cols)]
             for _ in range(self.n_rows)
         ]
 
     def apply_glitch(self):
-        '''applies random glitches to the matrix by changing the characters in random cells.'''
+        """
+        Apply random glitches to the Matrix object by changing the characters in random cells.
+
+        This method simulates the effect of random glitches on the Matrix object.
+
+        The method calculates the total number of glitches to apply based on the `glitch_freq` attribute and the size of the Matrix.
+        For each glitch, the method randomly selects a cell and sets its character to a new random value.
+
+        Each cell normally has a 1% chance of glitching, but that can be changed when initializing a Matrix object
+        """
         total = self.n_cols * self.n_rows * self.glitch_freq
 
         for _ in range(int(total)):  # Chooses random column and row and updates character in that cell
@@ -106,8 +192,23 @@ class Matrix(list):
             self.update_cell(i_row, i_col, char=self.get_random_char())
 
     def message_glitch(self, seed: int):
-        '''creates a vertical message in a random spot on the terminal by updating cells.
-        Also returns the starting position (row and column) and the length of the message'''
+        """
+        Create a vertical message in a random spot on the Matrix object by updating cells.
+
+        Args:
+            seed (int): The seed value for the random number generator.
+
+        Returns:
+            tuple: A tuple containing the starting row, starting column, and length of the message.
+
+        The method first sets the seed value for the random number generator to ensure consistent results.
+        It then randomly selects a message from the `messages` attribute and a starting column and row for the message.
+
+        The method then iterates over the length of the message, updating the character and state of each cell to form the message.
+        The last cell of the message is cleared by setting its state to `state_none`.
+
+        This method is used for displaying messages on the Matrix object in a random location.
+        """
         random.seed(seed)
         message = random.choice(self.messages)
         i_col = random.randint(0, self.n_cols - 1)
@@ -121,15 +222,42 @@ class Matrix(list):
         return i_row, i_col, len(message)        
 
     def delete_message(self, i_row, i_col, message_length):
-        '''deletes a message in the terminal by setting the specified matrix cells 
-        to a blank state and giving them random characters'''
+        """
+        Delete a message in the Matrix object by setting the specified matrix cells to a blank state and giving them random characters.
+
+        Args:
+            i_row (int): The starting row of the message.
+            i_col (int): The starting column of the message.
+            message_length (int): The length of the message.
+
+        The method iterates over the length of the message, updating the character and state of each cell to clear the message.
+
+        This method is used for removing messages from the Matrix object.
+        """
         for i in range(message_length + 1):
             self.update_cell(i_row+i, i_col, char=self.get_random_char(), state=state_none, length=0)
 
     def drop_col(self, i_col: int):
-        '''drops a single column in the matrix by moving the characters down by one row, starting from the bottom-most row and working its way up.
-        It also returns a boolean value indicating if the bottom-most cell in the given column was in the "front" state.'''
-        dropped = self[self.n_rows - 1][i_col] == state_front # checking if the bottom-most cell in a given column has reached the "front" state and storing it as a boolean
+        """
+        Drop a single column in the Matrix object by moving the characters down by one row
+
+        Args:
+            i_col (int): The column to drop.
+
+        Returns:
+            bool: A boolean value indicating if the bottom-most cell in the given column was in the "front" state.
+
+        This method drops a single column in the Matrix object by moving the characters down by one row, starting from the bottom-most row and working its way up.
+
+        The method first checks if the bottom-most cell in the given column has reached the "front" state, and returns this value as a boolean.
+
+        The method then iterates over the rows of the given column, 
+        moving each cell down by one row by updating the cell in the row below it with the current character, state, and length.
+        The current cell is then set to the "none" state and a length of 0.
+
+        This method is used for simulating the effect of gravity on the Matrix object.
+        """
+        dropped = self[self.n_rows - 1][i_col] == state_front # checking if the bottom cell in a given column has "front" state and storing it as a boolean
 
         for i_row in reversed(range(self.n_rows)): 
             _, state, length = self[i_row][i_col]
@@ -146,7 +274,19 @@ class Matrix(list):
         return dropped
 
     def add_drop(self, i_row: int, i_col: int, drop_length: int):
-        '''adds new drops to the matrix, with a specified length and random starting position.'''
+        """
+        Add new drops to the Matrix object, with a specified length and starting position.
+
+        Args:
+            i_row (int): The row to start the drop at.
+            i_col (int): The column to start the drop in.
+            drop_length (int): The length of the drop, in characters.
+
+        The method first iterates backwards over the length of the drop, starting from the specified row and column.
+
+        For each cell in the drop, the method calculates the length of the tail of the drop and updates the state and length of the cell.
+        The front of the drop is specified as the first cell in the drop, and has a length of 1.
+        """
         for i in reversed(range(drop_length)):
             r = i_row + (drop_length - i)
 
@@ -157,13 +297,32 @@ class Matrix(list):
                 self.update_cell(r, i_col, state=state_tail, length=l) # specifies the tail of the drop
 
     def screen_check(self):
-        '''checks the terminal size and adjusts the matrix size if necessary.'''
+        """
+        Check the terminal size and adjust the Matrix object size if necessary.
+
+        This method checks the terminal size and adjusts the Matrix object size if necessary.
+
+        If the terminal size has changed, the method sets the `n_rows` and `n_cols` attributes of the Matrix object to the new terminal size,
+        and then fills the Matrix object with random characters.
+
+        This method is used for ensuring that the Matrix object fits within the terminal window.
+        """
         if (prompt_size := self.get_prompt_size()) != (self.n_rows, self.n_cols):
             self.n_rows, self.n_cols = prompt_size
             self.fill()
 
     def update(self):
-        '''updates the matrix by dropping columns and adding new drops.'''
+        """
+        Update the Matrix object by dropping columns and adding new drops.
+
+        This method updates the Matrix object by dropping columns and adding new drops, based on the `drop_freq` attribute.
+
+        The method first drops all columns and counts the number of drops that reached the end of the Matrix object.
+        It then calculates the total number of drops that should be in the Matrix object based on the `drop_freq` attribute
+        and calculates the number of missing drops needed to reach this total.
+
+        The method then adds the calculated number of missing drops to random columns, with a random length.
+        """
         dropped = sum(self.drop_col(i_col) for i_col in range(self.n_cols)) # drops all columns, sums number of drops that reached the end
 
         total = self.n_cols * self.n_rows * self.drop_freq # total number of drops that should be in the matrix based on the drop_freq attribute
@@ -176,7 +335,14 @@ class Matrix(list):
             self.add_drop(0, i_col, length)
 
     def start(self):
-        '''starts the animation loop, continuously updating and rendering the matrix.'''
+        """
+        Starts the animation loop, continuously updating and rendering the Matrix object.
+
+        The method uses a while loop to render the Matrix object, with a delay between iterations based on the `wait` attribute.
+
+        During each iteration, the method checks the terminal size, updates the Matrix object, and displays a message in the terminal for a specified number of iterations.
+        It also applies glitches to the Matrix object and deletes any existing message in the terminal.
+        """
         iteration = 0
         seed = None
 
@@ -238,7 +404,7 @@ def start(
         if not 0 <= len(message) <= 40:
             raise typer.BadParameter("message too long to display")
 
-    matrix = Matrix(speed, glitches, frequency, message_timer+20, messages)
+    matrix = Matrix(speed, glitches, frequency, message_timer, messages)
     matrix.start()
 
 

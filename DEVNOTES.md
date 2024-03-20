@@ -79,3 +79,7 @@ To-do: add different messages, apply regular glitches as well
 → long front sections of drops has the same length as `message_timer`, why? Also frequency of drops changes when `message_timer` changes. Looks like update only runs after time specified in `message_timer`.
 
 - updated variable names
+
+### 20.03.2024
+
+- created better doctrings for methods
