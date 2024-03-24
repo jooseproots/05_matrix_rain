@@ -59,7 +59,7 @@ class Matrix(list):
         self.glitch_freq = 0.01 * (glitch_freq / 100)
         self.drop_freq = 0.1 * (drop_freq / 100)
         self.message_timer = message_timer
-        self.messages = messages
+        self.messages = messages.split('|')
 
     def __str__(self):
         """
@@ -209,7 +209,8 @@ class Matrix(list):
 
         This method is used for displaying messages on the Matrix object in a random location.
         """
-        random.seed(seed)
+        original_state = random.getstate() # saves the original state of the random generator
+        random.seed(seed) # sets a new seed for the random generator to be used in this method
         message = random.choice(self.messages)
         i_col = random.randint(0, self.n_cols - 1)
         i_row = random.randint(max_drop_length, self.n_rows - len(message) - 1)
@@ -218,6 +219,7 @@ class Matrix(list):
                 self.update_cell(i_row+i, i_col, state=state_none) # makes last cell clear
             else:
                 self.update_cell(i_row+i, i_col, char=message[i], state=state_message)
+        random.setstate(original_state) # sets the random generator to original state, forgetting the seed
 
         return i_row, i_col, len(message)        
 
@@ -348,14 +350,13 @@ class Matrix(list):
 
         while True:
             print(clear_char, end="")
-            print(self, end="", flush=True)
-
+            print(self, end="", flush=True) # flush = True immidiately prints buffered text when prints calles, needed when using end = ""
             self.screen_check()
             
             self.update()
 
             if iteration == 0: 
-                seed = random.randint(0, 1000)  # Generates a new random seed
+                seed = random.randint(0, 1000) # Generates a new random seed
 
             if iteration <= self.message_timer - 1: # Displays a message in the terminal for 'message_time' number of iterations
                 r, c, message_length = self.message_glitch(seed=seed) 
@@ -383,13 +384,9 @@ def start(
     message_timer: int = typer.Option(
         20, "--message_timer", "-t", help="Number of iterations when static message is displayed in the animation"
     ),
-    messages: list[str] = typer.Option(
-        ["EmBRacE the coDe, FEAr the an0m@ly.",
-        "REality is a lie, W@k3 up.",
-        "ThE syStEm is w@tchinG, alwaYs.", 
-        "SurReND3R to thE b1n@ry abYss.", 
-        "Unr@v3l the illUsion, find th3 truTH."],
-        "--messages", "-m", help="List of subliminal messages to be displayed in the animation"
+    messages: str = typer.Option(
+        "EmBRacE the coDe, FEAr the an0m@ly.| REality is a lie, W@k3 up.| ThE syStEm is w@tchinG, alwaYs.| SurReND3R to thE b1n@ry abYss.| Unr@v3l the illUsion, find th3 truTH.",
+        "--messages", "-m", help="Subliminal messages to be displayed in the animation, separated by |"
     )
 ):
     """Start the matrix rain"""
@@ -404,7 +401,7 @@ def start(
         if not 0 <= len(message) <= 40:
             raise typer.BadParameter("message too long to display")
 
-    matrix = Matrix(speed, glitches, frequency, message_timer, messages)
+    matrix = Matrix(speed, glitches, frequency-70, message_timer, messages) # can also adjust parameters here
     matrix.start()
 
 

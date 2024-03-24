@@ -83,3 +83,13 @@ To-do: add different messages, apply regular glitches as well
 ### 20.03.2024
 
 - created better doctrings for methods
+
+### 24.03.2024
+
+→ bug with `message_timer` probably because of seed
+
+`random.getstate()` and `random.setstate()` methods can be used to save and restore the state of a random generator. Using these methods a certain seed could only be used in a snippet of code and not anywhere else.
+
+- fixed bug of long front sections and frequency of drops by using `random.getstate()` and `random.setstate()`to specify the seed only for the `message_glitch()` method.
+
+- added `split(|)` method to messages so `--messages` parameter could be used properly when initializing the animation.
