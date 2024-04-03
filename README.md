@@ -3,6 +3,8 @@
 ## Description
 The aim of this project is to use an existing script for a digital rain effect from The Matrix, refactor it and add forestry related symbols and messages to it.
 
+The original script by principle105 can be found [here](https://github.com/principle105/matrix_rain).
+
 The script creates a digital rain animation in the terminal with customizable parameters 
 
 ## Features
